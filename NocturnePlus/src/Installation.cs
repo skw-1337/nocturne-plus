@@ -156,12 +156,15 @@ namespace NocturnePlus
         }
 
         /// <summary>Met en place le bon ddraw.dll (et D3DImm.dll) pour le mode.</summary>
-        public void InstallerWrapper(Mode mode)
+        public void InstallerWrapper(Mode mode, Action<string> statut = null)
         {
             string fam = mode == Mode.Ultra ? "dgv" : "cnc";
+            // aucun wrapper dans le dossier du jeu : cnc-ddraw vient de l'exe, dgVoodoo de sa release officielle
             if (!ReserveDisponible(fam))
-                throw new InvalidOperationException("Wrapper not found for this mode (" + (fam == "dgv" ? "dgVoodoo 2 : DDraw.dll + D3DImm.dll" : "cnc-ddraw : ddraw.dll") +
-                    "). Copy it into " + Reserve(fam));
+            {
+                if (fam == "cnc") Depots.ExtraireCnc(Reserve("cnc"), Jeu);
+                else Depots.TelechargerDgVoodoo(Reserve("dgv"), Jeu, Path.Combine(Donnees, "telechargements"), statut);
+            }
 
             Poser("ddraw.dll", fam);
             if (mode == Mode.Ultra) Poser("D3DImm.dll", "dgv");
@@ -363,6 +366,24 @@ namespace NocturnePlus
         bool PackPresent(string d) { return Directory.Exists(PackRange(d)) || Directory.Exists(P(d)); }
         public bool PackDecorsDisponible { get { return DossiersPack.Any(PackPresent); } }
         public bool PackTexturesDisponible { get { return PackPresent("ART"); } }
+
+        /// <summary>
+        /// Genere le pack HD depuis les .POD de l'utilisateur (Real-ESRGAN telecharge au besoin).
+        /// Un pack existant est mis de cote dans _NocturnePlus\hd_ancien_<date>, jamais supprime.
+        /// </summary>
+        public int GenererPackHD(Action<string> statut)
+        {
+            InstallerDecors(false);
+            string hd = Path.Combine(Donnees, "hd");
+            if (Directory.Exists(hd))
+            {
+                string cote = hd + "_ancien_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                Directory.Move(hd, cote);
+                Journal.Note("Ancien pack HD mis de cote : {0}", cote.Substring(Jeu.Length + 1));
+            }
+            string esrgan = Depots.TelechargerRealEsrgan(Path.Combine(Donnees, "outils", "realesrgan"), Path.Combine(Donnees, "telechargements"), statut);
+            return new PackHD(Jeu, hd, statut).Generer(esrgan);
+        }
 
         public void InstallerDecors(bool actif)
         {

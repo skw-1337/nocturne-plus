@@ -6,13 +6,17 @@ Lanceur pour **Nocturne** (Terminal Reality, 1999), version française Abandonwa
 
 1. Copier `NocturnePlus.exe` dans le dossier du jeu (`C:\Jeux\ABWFR\Nocturne`, à côté de `nocturne.exe`).
 2. Ne **jamais** le lancer en administrateur.
-3. Si Windows Defender bloque le lancement (règle anti-ransomware ASR), ajouter une exclusion ASR,
+3. Rien d'autre à télécharger à la main :
+   - **cnc-ddraw** (mode Stable) est intégré au lanceur (licence MIT) ;
+   - **dgVoodoo 2** (mode Ultra HD) est téléchargé au premier lancement Ultra depuis la release
+     officielle de son auteur (Dege), vérifié par SHA-256 ;
+   - **Real-ESRGAN** n'est téléchargé que si vous générez le pack HD.
+4. Si Windows Defender bloque le lancement (règle anti-ransomware ASR), ajouter une exclusion ASR,
    dans un PowerShell administrateur :
 
    ```powershell
    Add-MpPreference -AttackSurfaceReductionOnlyExclusions "C:\Jeux\ABWFR\Nocturne\NocturnePlus.exe"
    ```
-
 Au premier lancement, le lanceur crée `_NocturnePlus\` dans le dossier du jeu :
 
 | Dossier / fichier | Contenu |
@@ -43,8 +47,9 @@ hauteur de votre écran (1920x1440 sur un 2560x1440, en 4:3 avec bandes noires),
 - 16:9 natif : Display → Game resolution **854x480**. Le lanceur applique alors seul le correctif caméra
   large ; revenir à 640x480 pour le 4:3 d'origine.
 
-- Graphics → **AI-remastered backgrounds and HD textures** : décors nettoyés par IA et textures des
-  personnages/objets agrandies en 256x256 (pack dans `_NocturnePlus\hd`).
+- Graphics → **Generate HD pack…** puis **AI-remastered backgrounds and HD textures** : décors
+  nettoyés par IA et textures des personnages/objets agrandies en 256x256, fabriqués sur votre PC à partir
+  de vos propres fichiers du jeu (15 à 30 min, carte graphique). Pack dans `_NocturnePlus\hd`.
   Décocher pour revenir aux décors d'origine ; les archives .POD ne sont jamais modifiées.
 
 ## Boutons

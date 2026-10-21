@@ -1,0 +1,4 @@
+﻿cnc-ddraw v7.1.0.0 - https://github.com/FunkyFr3sh/cnc-ddraw
+Fichiers d'origine de la release officielle (cnc-ddraw.zip, SHA-256
+0B13AB89A64C9918189B1DADD449EF6ED3CB3B7B19CABD96D8ADBD95505BB908), sous licence MIT
+(LICENSE.txt). Integres a NocturnePlus.exe et extraits par le lanceur si le jeu n'en a pas.

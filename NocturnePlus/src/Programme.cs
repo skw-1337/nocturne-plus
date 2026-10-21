@@ -19,7 +19,14 @@ namespace NocturnePlus
         [STAThread]
         static int Main(string[] args)
         {
-            string jeu = TrouverJeu();
+            // /jeu <dossier> en tete : travailler sur un autre dossier de jeu (tests)
+            string jeu = null;
+            if (args.Length > 1 && args[0].ToLowerInvariant() == "/jeu")
+            {
+                jeu = args[1];
+                args = args.Skip(2).ToArray();
+            }
+            if (jeu == null) jeu = TrouverJeu();
             if (jeu == null)
             {
                 Application.EnableVisualStyles();
@@ -37,6 +44,11 @@ namespace NocturnePlus
             if (cmd == "/diag" || cmd == "/fps" || cmd == "/touche" || cmd == "/modules") return Outil(cmd, args);
             if (cmd == "/preparer") return Preparer(inst, args);
             if (cmd == "/apercu") return Apercu(inst, args);
+            if (cmd == "/genererpack")
+            {
+                try { inst.GenererPackHD(s => Journal.Note("Pack HD : {0}", s)); return 0; }
+                catch (Exception ex) { Journal.Note("ERREUR pack HD : {0}", ex); return 4; }
+            }
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);

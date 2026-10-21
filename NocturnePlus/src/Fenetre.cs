@@ -30,6 +30,7 @@ namespace NocturnePlus
         ComboBox cbSortie, cbInterne, cbAniso, cbAA;
         NumericUpDown nuFps;
         CheckBox chkVsync, chkMip, chkTex, chkLisse2D, chkDecors;
+        BoutonN btPack;
         // page Sound
         ComboBox cbSon; CheckBox chkMuet;
         // page Advanced
@@ -187,8 +188,11 @@ namespace NocturnePlus
             chkMip = new CaseN { Text = "Auto-generated mipmaps (cleaner distant textures)", Left = 0, Top = 268, Width = 500, BackColor = Color.Transparent }; pG.Controls.Add(chkMip);
             chkTex = new CaseN { Text = "Larger texture cache (RENDER.INI)", Left = 0, Top = 294, Width = 500, BackColor = Color.Transparent }; pG.Controls.Add(chkTex);
             chkLisse2D = new CaseN { Text = "Smooth menus, text and HUD (instead of big pixels)", Left = 0, Top = 320, Width = 500, BackColor = Color.Transparent }; pG.Controls.Add(chkLisse2D);
-            chkDecors = new CaseN { Text = "AI-remastered backgrounds and HD textures", Left = 0, Top = 346, Width = 500, BackColor = Color.Transparent }; pG.Controls.Add(chkDecors);
-            Note(pG, "Quality settings apply to Ultra HD; remastered backgrounds work in both modes.", 0, 374, 600, 20);
+            chkDecors = new CaseN { Text = "AI-remastered backgrounds and HD textures", Left = 0, Top = 346, Width = 330, BackColor = Color.Transparent }; pG.Controls.Add(chkDecors);
+            btPack = new BoutonN(false) { Text = "Generate HD pack…", Left = 340, Top = 342, Width = 150, Height = 26 };
+            btPack.Click += (s, e) => GenererPack();
+            pG.Controls.Add(btPack);
+            new ToolTip().SetToolTip(btPack, "Builds the HD backgrounds and textures from your own game files with Real-ESRGAN (downloaded once, ~45 MB).");
 
             // --- Sound
             var pS = Page("Sound");
@@ -439,7 +443,7 @@ namespace NocturnePlus
             {
                 lblEtat.Text = "Preparing the game folder…"; lblEtat.Refresh();
                 inst.PreparerReserve();
-                inst.InstallerWrapper(r.Mode);
+                inst.InstallerWrapper(r.Mode, s => { lblEtat.Text = s; lblEtat.Refresh(); });
                 inst.EcrireIni(r, e);
                 inst.InstallerDecors(r.DecorsHD);
                 var actifs = inst.CorrectifsActifs(r);
@@ -464,6 +468,30 @@ namespace NocturnePlus
                 lblEtat.Text = "Launch failed: see the message.";
                 MessageBox.Show(this, ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        void GenererPack()
+        {
+            if (partie != null) { MessageBox.Show(this, "Close the game first.", Text); return; }
+            if (MessageBox.Show(this,
+                "Nocturne Plus will build the HD pack from your own game files:\n\n" +
+                "• downloads Real-ESRGAN once (~45 MB, official xinntao release, BSD licence);\n" +
+                "• upscales about 1,600 backgrounds and 1,100 textures with your graphics card (15 to 30 minutes);\n" +
+                "• the .POD archives are never modified; an existing pack is kept aside.\n\nStart now?",
+                Text, MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            btPack.Enabled = btLancer.Enabled = false;
+            Action<string> statut = s => BeginInvoke(new Action(() => { lblEtat.Text = s; }));
+            new System.Threading.Thread(() =>
+            {
+                string fin;
+                try { fin = string.Format("HD pack ready: {0} images. Tick the box to use it.", inst.GenererPackHD(statut)); }
+                catch (Exception ex) { Journal.Note("ERREUR pack HD : {0}", ex); fin = "HD pack failed: " + ex.Message; }
+                BeginInvoke(new Action(() =>
+                {
+                    lblEtat.Text = fin; btPack.Enabled = btLancer.Enabled = true;
+                    chkDecors.Enabled = inst.PackDecorsDisponible; if (chkDecors.Enabled) chkDecors.Checked = true;
+                }));
+            }) { IsBackground = true, Name = "pack-hd" }.Start();
         }
 
         void Reparer()
