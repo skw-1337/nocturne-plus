@@ -1,0 +1,15 @@
+# binaire compile : publie en piece jointe des releases GitHub, pas dans le depot
+NocturnePlus/NocturnePlus.exe
+*.pdb
+
+# jamais de fichiers du jeu (Nocturne reste la propriete de ses ayants droit)
+*.pod
+*.POD
+nocturne.exe
+*.raw
+*.RAW
+*.act
+*.opa
+
+# Python
+__pycache__/
