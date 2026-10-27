@@ -35,6 +35,12 @@ copy of Nocturne, and the HD pack is never distributed (it is derived from the g
   `lanczos2-sharp.glsl` by Hyllian (MIT, notice inside the file)
 - **Real-ESRGAN** by Xintao Wang et al. — <https://github.com/xinntao/Real-ESRGAN> (BSD-3-Clause, not redistributed)
 
+## License
+
+Made by skw-1337, released under the [MIT license](LICENSE). Nocturne is © its respective owners (Terminal Reality);
+this launcher contains no game data. cnc-ddraw keeps its own MIT licence; dgVoodoo 2 and Real-ESRGAN are downloaded
+from their official releases, not redistributed.
+
 ## Layout
 
 | Path | Content |
