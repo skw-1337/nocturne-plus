@@ -44,6 +44,10 @@ hauteur de votre écran (1920x1440 sur un 2560x1440, en 4:3 avec bandes noires),
 - Advanced → Processor : **Game on one core, rendering free** (recommandé). « No restriction » fonctionne
   aussi avec le correctif d'horloge (voir le rapport).
 - Advanced → patches : **Precise engine clock** et **No false low-memory warning** cochés (activés par défaut).
+- Version du jeu : les correctifs visent le dernier patch officiel, **Nocturne Patch 2 (Build 1.00.52)**.
+  Ils sont retrouvés par signature du code. Si `nocturne.exe` n'est pas reconnu, rien n'y est écrit : le
+  lanceur nomme le patch à installer et propose de jouer quand même sans les correctifs (mono-cœur).
+  Tous les correctifs décochés : l'exe n'est ni vérifié ni modifié.
 - 16:9 natif : Display → Game resolution **854x480**. Le lanceur applique alors seul le correctif caméra
   large ; revenir à 640x480 pour le 4:3 d'origine.
 

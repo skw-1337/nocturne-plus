@@ -104,6 +104,37 @@ garde son masque d'origine ; 335 `.OPA` agrandis. Exclues : images 2D à taille 
 `MENUCLD2`). Pack dans `ART\` (même interrupteur que les décors) ; `RENDER.INI maxTextures256 = 256`
 quand il est actif. **Pas encore vérifié en jeu.**
 
+### 11. Autres versions de `nocturne.exe` (v1.2.0)
+
+Question : l'exe de la VF Abandonware France est-il le même que celui des autres versions ?
+
+- Le dernier patch officiel est **Nocturne Patch 2 (Build 1.00.52)** (`nocpat2.zip`, patches-scrolls.de),
+  téléchargé seul, sans copie du jeu. Il n'a **jamais été exécuté** : examiné hors exécution.
+- C'est un patcheur **RTPatch 5.20** (Pocket Soft) : il ne contient que des différences, **aucun exe
+  complet** (pas d'en-tête MZ/PE embarqué). Une comparaison octet par octet (SHA-256) est donc impossible.
+- Ce qu'il contient : la cible `NOCTURNE.EXE` fait **1 948 160 octets**, la taille exacte de l'exe de
+  la VF, qui porte aussi la version 1.00.52. Une sonde de contrôle y figure, mais son algorithme n'a pas
+  pu être identifié : rien ne prouve l'identité au bit près.
+
+Décision : les correctifs ne dépendent plus d'adresses fixes. Chaque emplacement est retrouvé par
+**signature du code** (`src/Signatures.cs`). Les adresses absolues propres à une compilation sont des
+jokers. Chaque motif doit apparaître **une seule fois**, sinon rien n'est écrit. Les octets écrits sont
+recalculés depuis ceux trouvés : sauts relatifs, adresses de la largeur et de la hauteur du jeu,
+adresses de l'horloge.
+
+Vérifié par un banc d'essai (31 contrôles, sur une copie isolée, en chargeant le lanceur compilé) :
+
+- sur l'exe d'origine, les 9 signatures sont trouvées une seule fois ; l'application donne **exactement**
+  les mêmes octets que l'ancien moteur à adresses fixes, et le retrait redonne l'exe d'origine ;
+- l'exe déjà corrigé par la v1.1.0 est reconnu (correctifs vus comme appliqués) et se ramène à l'origine ;
+- un exe modifié pour simuler une autre version n'est pas reconnu. Rien n'y est écrit et le lanceur
+  propose de jouer quand même : wrapper et réglages appliqués, mono-cœur, 640x480 en Ultra HD, sans
+  décors HD. Le message nomme le Patch 2 ;
+- tout décoché : l'exe n'est ni lu ni modifié, qu'il soit reconnu ou non.
+
+Limite : aucune autre version réelle de l'exe n'a pu être testée (pas de copie complète téléchargée).
+Une version différente du jeu sera soit reconnue, soit refusée proprement, jamais corrigée de travers.
+
 ## Mesures
 
 - Gel au démarrage : 5–8 s avant correctif → **aucun** après (4 lancements).

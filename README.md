@@ -6,7 +6,7 @@ Launcher for **Nocturne** (Terminal Reality, 1999) on Windows 10/11, in the spir
 - **Ultra HD**: real hardware 3D through dgVoodoo 2 (Direct3D 11), rendered at your screen's height,
   native **16:9** option, 16x anisotropic filtering, 60 FPS (the cape physics follows the frame rate).
 - **Stable**: software rendering through cnc-ddraw, the safe fallback.
-- **Engine fixes** applied to `nocturne.exe`, byte-checked and reversible (original kept):
+- **Engine fixes** applied to `nocturne.exe`, located by code signature and reversible (original kept):
   precise engine clock (fixes the multi-core freeze and slow menus), no false low-memory warning,
   widescreen camera, loose files override the `.POD` archives.
 - **HD pack** (optional, one button): pre-rendered backgrounds cleaned of 256-colour grain and 3D
@@ -25,7 +25,14 @@ Nothing else to download by hand:
 | dgVoodoo 2.87.5 (Ultra HD mode) | downloaded on first Ultra HD launch from the author's official release |
 | Real-ESRGAN (HD pack) | downloaded only when you click *Generate HD pack* |
 
-Downloads are checked against a pinned SHA-256. The game files are **not** included: you need your own
+Downloads are checked against a pinned SHA-256.
+
+**Game version.** Nocturne Plus is made for the latest official patch, **Nocturne Patch 2 (Build 1.00.52)**
+([patches-scrolls.de](https://www.patches-scrolls.de/patch/2952/7/28592)). Each engine fix finds its spot by a
+code signature that must match exactly once, so nothing is written unless your `nocturne.exe` is recognised.
+If it is not, the launcher says so, names the patch to install, and offers to **play anyway** without the
+engine fixes (wrapper and settings still apply, single-core). With every fix unticked, `nocturne.exe` is
+neither checked nor touched. The game files are **not** included: you need your own
 copy of Nocturne, and the HD pack is never distributed (it is derived from the game's assets).
 
 ## Credits

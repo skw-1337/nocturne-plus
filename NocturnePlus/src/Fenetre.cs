@@ -373,7 +373,7 @@ namespace NocturnePlus
         class ElementCorrectif
         {
             public Correctif C; public string Etat;
-            public override string ToString() { return C.Description + "  [" + (Etat == "applique" ? "applied" : Etat == "absent" ? "not applied" : Etat) + "]"; }
+            public override string ToString() { return C.Description + "  [" + (Etat == "applique" ? "applied" : Etat == "absent" ? "not applied" : Etat == "partiel" ? "partly applied" : Etat == "incompatible" ? "nocturne.exe not recognised" : Etat) + "]"; }
         }
 
         void RemplirSorties()
@@ -427,6 +427,27 @@ namespace NocturnePlus
                 return;
             }
             if (Natif.IsUserAnAdmin() && !Confirmer("The launcher is running as administrator. The game would also run as administrator, which is not recommended. Continue anyway?")) return;
+            // exe non reconnu (autre version que le Patch 2) : on propose de jouer sans les correctifs du
+            // moteur ; tout decoche, l'exe n'est ni verifie ni touche
+            var actifs = inst.CorrectifsActifs(r);
+            bool toucherExe = actifs.Count > 0;
+            if (toucherExe)
+            {
+                var inconnus = inst.NonReconnus(actifs);
+                if (inconnus.Count > 0)
+                {
+                    Journal.Note("nocturne.exe non reconnu (SHA-1 {0}) : correctifs impossibles : {1}", Installation.Sha1(inst.P("nocturne.exe")), string.Join(", ", inconnus.Select(c => c.Id).ToArray()));
+                    if (MessageBox.Show(this, Installation.MessageNonReconnu(inconnus) +
+                        "\n\nPlay anyway without the engine fixes?\nnocturne.exe will be left untouched; this launch uses single-core mode (the 1999 clock freezes on several cores) and 640x480 in Ultra HD (no widescreen camera). Wrapper and settings still apply.",
+                        Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1) != DialogResult.Yes) return;
+                    Journal.Note("Jouer quand meme : aucun correctif, nocturne.exe laisse tel quel, mono-coeur pour ce lancement");
+                    toucherExe = false;
+                    r.Coeurs = Coeurs.MonoCoeur;
+                    int lw, lh;
+                    if (Reglages.LireRes(r.ResInterne, out lw, out lh) && lw * 3 > lh * 4) r.ResInterne = "640x480";
+                    if (r.DecorsHD) r.DecorsHD = false;   // les decors HD ont besoin du correctif "fichiers libres"
+                }
+            }
             // le gel multi-coeur venait de l'horloge du moteur : sans ce correctif, on previent
             if (r.Coeurs != Coeurs.MonoCoeur && !r.Correctifs.Split(',').Contains("horloge") &&
                 !Confirmer("Without the \"Engine clock\" patch, the 1999 engine freezes outside single-core mode (claws screen or after ~30 s), and a freeze may require restarting the PC.\n\nLaunch anyway?")) return;
@@ -446,8 +467,8 @@ namespace NocturnePlus
                 inst.InstallerWrapper(r.Mode, s => { lblEtat.Text = s; lblEtat.Refresh(); });
                 inst.EcrireIni(r, e);
                 inst.InstallerDecors(r.DecorsHD);
-                var actifs = inst.CorrectifsActifs(r);
-                foreach (var c in Installation.Correctifs) inst.Appliquer(c, actifs.Contains(c.Id));
+                if (toucherExe) foreach (var c in Installation.Correctifs) inst.Appliquer(c, actifs.Contains(c.Id));
+                else Journal.Note("nocturne.exe : aucun correctif demande, exe ni verifie ni modifie");
                 if (inst.DossierSauvegarde != null) Journal.Note("Fichiers d'avant le lancement sauvegardes dans {0}", inst.DossierSauvegarde.Substring(inst.Jeu.Length + 1));
 
                 partie = new Partie(inst, r);

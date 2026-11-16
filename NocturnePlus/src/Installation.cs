@@ -10,23 +10,22 @@ using System.Text;
 
 namespace NocturnePlus
 {
-    /// <summary>Un correctif binaire : octets d'origine verifies avant toute ecriture.</summary>
+    /// <summary>
+    /// Un correctif de nocturne.exe : une liste de sites reperes par signature du code (voir Signatures.cs),
+    /// donc independant de l'adresse exacte. Rien n'est ecrit si un seul site est introuvable ou ambigu.
+    /// </summary>
     class Correctif
     {
         public string Id, Description;
-        public string Fichier;      // fichier source, relatif au dossier du jeu
-        public string Cible;        // null = modifie le fichier lui-meme ; sinon copie corrigee
-        public string Sha1Origine;  // empreinte du fichier d'origine attendu
-        public List<Tuple<int, byte[], byte[]>> Octets = new List<Tuple<int, byte[], byte[]>>(); // decalage fichier, origine, nouveau
+        public string Fichier = "nocturne.exe";   // relatif au dossier du jeu
+        public List<Site> Sites = new List<Site>();
+        public Correctif Ajout(Site s) { Sites.Add(s); return this; }
+    }
 
-        public Correctif Ajout(int off, string orig, string nouv) { Octets.Add(Tuple.Create(off, Hex(orig), Hex(nouv))); return this; }
-        static byte[] Hex(string s)
-        {
-            s = s.Replace(" ", "");
-            var b = new byte[s.Length / 2];
-            for (int i = 0; i < b.Length; i++) b[i] = Convert.ToByte(s.Substring(i * 2, 2), 16);
-            return b;
-        }
+    /// <summary>nocturne.exe n'est pas une version reconnue : les correctifs demandes ne s'y appliquent pas.</summary>
+    class ExeNonReconnu : Exception
+    {
+        public ExeNonReconnu(string m) : base(m) { }
     }
 
     class Installation
@@ -35,8 +34,13 @@ namespace NocturnePlus
         public static readonly Encoding Win1252 = Encoding.GetEncoding(1252);
         string dossierSauvegarde;
 
-        // Empreintes connues (version francaise Abandonware France)
+        // Empreinte de l'exe de reference (Patch 2, build 1.00.52, version francaise Abandonware France).
+        // Les correctifs ne s'appuient pas dessus (recherche par signature) ; elle ne sert qu'au journal.
         public const string Sha1NocturneExe = "c07307239723bd6db62acecde9d92f0597190d89";
+
+        /// <summary>Patch officiel a installer quand l'exe n'est pas reconnu.</summary>
+        public const string PatchOfficiel = "Nocturne Patch 2 (Build 1.00.52)";
+        public const string LienPatchOfficiel = "https://www.patches-scrolls.de/patch/2952/7/28592";
 
         public Installation(string jeu)
         {
@@ -405,74 +409,71 @@ namespace NocturnePlus
 
         public string CopieOriginale(string relatif) { return Path.Combine(Donnees, "originaux", relatif); }
 
-        /// <summary>Etat d'un correctif : "absent", "applique", "incompatible".</summary>
+        /// <summary>Etat d'un correctif : "absent", "applique", "partiel" ou "incompatible" (exe non reconnu).</summary>
         public string Etat(Correctif c)
         {
-            string f = P(c.Cible ?? c.Fichier);
-            if (!File.Exists(f)) return "absent";
-            var data = File.ReadAllBytes(f);
-            bool tousNeufs = true, tousOrig = true;
-            foreach (var o in c.Octets)
-            {
-                if (!Egal(data, o.Item1, o.Item3)) tousNeufs = false;
-                if (!Egal(data, o.Item1, o.Item2)) tousOrig = false;
-            }
-            if (tousNeufs) return "applique";
-            if (tousOrig) return c.Cible == null ? "absent" : "incompatible";
-            return "incompatible";
+            string f = P(c.Fichier);
+            if (!File.Exists(f)) return "incompatible";
+            return Nom(Signatures.EtatDe(File.ReadAllBytes(f), c));
         }
 
-        static bool Egal(byte[] d, int off, byte[] b)
+        static string Nom(Signatures.Etat e)
         {
-            if (off + b.Length > d.Length) return false;
-            for (int i = 0; i < b.Length; i++) if (d[off + i] != b[i]) return false;
-            return true;
+            return e == Signatures.Etat.Applique ? "applique" : e == Signatures.Etat.Absent ? "absent" : e == Signatures.Etat.Partiel ? "partiel" : "incompatible";
         }
 
+        /// <summary>Correctifs demandes que l'exe present ne permet pas d'appliquer (version non reconnue).</summary>
+        public List<Correctif> NonReconnus(IEnumerable<string> ids)
+        {
+            var liste = Correctifs.Where(c => ids.Contains(c.Id)).ToList();
+            if (liste.Count == 0) return liste;
+            var d = File.Exists(P("nocturne.exe")) ? File.ReadAllBytes(P("nocturne.exe")) : new byte[0];
+            return liste.Where(c => d.Length < 0x400 || Signatures.EtatDe(d, c) == Signatures.Etat.Inconnu).ToList();
+        }
+
+        public static string MessageNonReconnu(IEnumerable<Correctif> liste)
+        {
+            return "Your nocturne.exe is not a version Nocturne Plus recognises, so these engine fixes cannot be applied:\n\n" +
+                string.Join("\n", liste.Select(c => "• " + c.Description).ToArray()) +
+                "\n\nNocturne Plus is made for the latest official patch, " + PatchOfficiel + ": install it (" + LienPatchOfficiel +
+                "), or use a copy of the game that already includes it.";
+        }
+
+        /// <summary>Applique (actif) ou retire un correctif. L'exe n'est ecrit que si le contenu change.</summary>
         public void Appliquer(Correctif c, bool actif)
         {
             string src = P(c.Fichier);
-            if (c.Cible != null)
+            var data = File.ReadAllBytes(src);
+            var etat = Signatures.EtatDe(data, c);
+            if (etat == Signatures.Etat.Inconnu)
             {
-                // correctif sur une copie (ex. DLL de rendu) : l'original n'est jamais touche
-                string cible = P(c.Cible);
-                if (!actif) return;
-                if (Sha1(src) != c.Sha1Origine) throw new InvalidOperationException(c.Fichier + " is not the expected version: patch " + c.Id + " refused.");
-                var d = File.ReadAllBytes(src);
-                foreach (var o in c.Octets)
-                {
-                    if (!Egal(d, o.Item1, o.Item2)) throw new InvalidOperationException("Unexpected original bytes in " + c.Fichier + " at 0x" + o.Item1.ToString("X"));
-                    Array.Copy(o.Item3, 0, d, o.Item1, o.Item3.Length);
-                }
-                if (File.Exists(cible) && Etat(c) == "applique") return;
-                if (File.Exists(cible)) { Sauvegarder(c.Cible); Ecarter(c.Cible, "ancien"); }
-                File.WriteAllBytes(cible, d);
-                Journal.Note("Correctif {0} : {1} cree depuis {2}", c.Id, c.Cible, c.Fichier);
-                return;
+                if (!actif) return;   // rien a retirer d'un exe qu'on ne reconnait pas : on n'y touche pas
+                throw new ExeNonReconnu(MessageNonReconnu(new[] { c }));
             }
+            if (actif && etat == Signatures.Etat.Applique) return;
+            if (!actif && etat == Signatures.Etat.Absent) return;
 
-            string etat = Etat(c);
-            if (actif && etat == "applique") return;
-            if (!actif && etat == "absent") return;
-            if (etat == "incompatible") throw new InvalidOperationException("Patch " + c.Id + ": unexpected bytes in " + c.Fichier + ", nothing written.");
-
-            // copie de l'original avant la toute premiere modification
+            // copie de l'original avant la toute premiere modification : l'exe sans aucun correctif,
+            // reconstitue en retirant ceux qui seraient deja poses
             string orig = CopieOriginale(c.Fichier);
             if (!File.Exists(orig))
             {
-                if (Sha1(src) != c.Sha1Origine) throw new InvalidOperationException(c.Fichier + " was already modified: no safe original copy, patch refused.");
+                var vierge = (byte[])data.Clone();
+                bool ok = Correctifs.Where(x => x.Fichier == c.Fichier).All(x => Signatures.EtatDe(vierge, x) == Signatures.Etat.Inconnu || Signatures.Modifier(vierge, x, false));
+                if (!ok) throw new InvalidOperationException(c.Fichier + ": the original copy could not be rebuilt, nothing written.");
                 Directory.CreateDirectory(Path.GetDirectoryName(orig));
-                File.Copy(src, orig);
+                File.WriteAllBytes(orig, vierge);
                 Journal.Note("Copie d'origine conservee : {0}", orig.Substring(Jeu.Length + 1));
             }
+            if (!Signatures.Modifier(data, c, actif)) throw new InvalidOperationException("Patch " + c.Id + ": unexpected bytes in " + c.Fichier + ", nothing written.");
             Sauvegarder(c.Fichier);
-            var data = File.ReadAllBytes(src);
-            foreach (var o in c.Octets) Array.Copy(actif ? o.Item3 : o.Item2, 0, data, o.Item1, o.Item2.Length);
             File.WriteAllBytes(src, data);
             Journal.Note("Correctif {0} {1} dans {2}", c.Id, actif ? "applique" : "retire", c.Fichier);
         }
 
         // ---------------------------------------------------------------- reparation
+
+        static bool EstVierge(byte[] exe) { return Correctifs.All(c => Signatures.EtatDe(exe, c) == Signatures.Etat.Absent); }
 
         /// <summary>Remet la configuration connue-bonne (mode Stable, aucun correctif).</summary>
         public void Reparer(Ecrans.Info ecran)
@@ -480,9 +481,11 @@ namespace NocturnePlus
             Journal.Note("=== Reparation : retour a la configuration connue-bonne (mode Stable) ===");
             PreparerReserve();
             InstallerDecors(false);
-            foreach (var c in Correctifs) if (c.Cible == null && Etat(c) == "applique") Appliquer(c, false);
+            foreach (var c in Correctifs) if (Etat(c) != "absent" && Etat(c) != "incompatible") Appliquer(c, false);
+            // exe encore different de la copie d'origine (correctif d'une ancienne version...) : on remet
+            // la copie, si elle est bien un exe reconnu et vierge ; l'exe actuel est range, pas supprime
             string orig = CopieOriginale("nocturne.exe");
-            if (File.Exists(orig) && Sha1(P("nocturne.exe")) != Sha1NocturneExe && Sha1(orig) == Sha1NocturneExe)
+            if (File.Exists(orig) && File.Exists(P("nocturne.exe")) && Sha1(P("nocturne.exe")) != Sha1(orig) && EstVierge(File.ReadAllBytes(orig)))
             {
                 Sauvegarder("nocturne.exe"); Ecarter("nocturne.exe", "modifie");
                 File.Copy(orig, P("nocturne.exe"));
